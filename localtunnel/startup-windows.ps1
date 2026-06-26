@@ -168,7 +168,7 @@ Write-Success "🌍 Global URL: https://$Subdomain.loca.lt"
 
 # Create admin users
 Write-Host "👤 Setting up admin user..."
-node create-admin.js
+node scripts/create-admin.js
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "⚠️  Warning: Admin user setup may have issues, but continuing..."
 }
