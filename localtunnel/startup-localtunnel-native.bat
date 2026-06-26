@@ -163,7 +163,7 @@ set ADMIN_EMAIL=priyanshu17ks.edu@gmail.com
 
 :: Create admin user
 echo Setting up admin user...
-node create-admin.js
+node scripts\create-admin.js
 if %errorlevel% neq 0 (
     echo [WARNING] Admin user setup may have issues, but continuing...
 )
