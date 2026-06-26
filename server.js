@@ -106,24 +106,42 @@ process.on('unhandledRejection', (reason, promise) => {
  * Production uses Unix socket for Google Cloud SQL, development uses TCP connection
  */
 // Database configuration - different for production (App Engine) vs development
-const dbConfig = process.env.NODE_ENV === 'production' ? {
-    // Production: Check if using socket path (Cloud SQL) or TCP (Windows)
-    ...(process.env.DB_HOST && process.env.DB_HOST.startsWith('/') ? 
-        { socketPath: process.env.DB_HOST } : 
-        { 
-            host: process.env.DB_HOST || 'localhost',
-            port: process.env.DB_PORT || 3306
-        }
-    ),
-    user: process.env.DB_USER || process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || process.env.DB_DATABASE,
-    connectionLimit: 5,
-    waitForConnections: true,
-    queueLimit: 0,
-    ssl: { rejectUnauthorized: false }
-} : {
-    // Development: Use standard TCP connection
+// const dbConfig = process.env.NODE_ENV === 'production' ? {
+//     // Production: Check if using socket path (Cloud SQL) or TCP (Windows)
+//     ...(process.env.DB_HOST && process.env.DB_HOST.startsWith('/') ? 
+//         { socketPath: process.env.DB_HOST } : 
+//         { 
+//             host: process.env.DB_HOST || 'localhost',
+//             port: process.env.DB_PORT || 3306
+//         }
+//     ),
+//     user: process.env.DB_USER || process.env.DB_USERNAME,
+//     password: process.env.DB_PASSWORD,
+//     database: process.env.DB_NAME || process.env.DB_DATABASE,
+//     connectionLimit: 5,
+//     waitForConnections: true,
+//     queueLimit: 0,
+//     ssl: { rejectUnauthorized: false }
+// } : {
+//     // Development: Use standard TCP connection
+//     host: process.env.DB_HOST || 'localhost',
+//     user: process.env.DB_USER || process.env.DB_USERNAME || 'sigma',
+//     password: process.env.DB_PASSWORD || 'sigma',
+//     database: process.env.DB_NAME || process.env.DB_DATABASE || 'product_management_system',
+//     port: process.env.DB_PORT || 3306,
+//     connectionLimit: 5,
+//     waitForConnections: true,
+//     queueLimit: 0,
+//     ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? { rejectUnauthorized: false } : undefined
+// };
+
+// console.log('Database connection config:', (process.env.DB_HOST && process.env.DB_HOST.startsWith('/')) ? 
+//     `Production mode - using socket: ${process.env.DB_HOST}` : 
+//     `Using host: ${process.env.DB_HOST || 'localhost'}`);
+
+//For AZURE DEPLOYMENT
+// Database configuration - tailored for Azure App Service & Azure MySQL
+const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || process.env.DB_USERNAME || 'sigma',
     password: process.env.DB_PASSWORD || 'sigma',
@@ -132,12 +150,11 @@ const dbConfig = process.env.NODE_ENV === 'production' ? {
     connectionLimit: 5,
     waitForConnections: true,
     queueLimit: 0,
+    // Automatically use safe cloud SSL settings when hosted on Azure
     ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? { rejectUnauthorized: false } : undefined
 };
 
-console.log('Database connection config:', (process.env.DB_HOST && process.env.DB_HOST.startsWith('/')) ? 
-    `Production mode - using socket: ${process.env.DB_HOST}` : 
-    `Using host: ${process.env.DB_HOST || 'localhost'}`);
+console.log(`Database connection config -> Using host: ${dbConfig.host}`);
 
 // Create MySQL connection pool for efficient database connections
 const pool = mysql.createPool(dbConfig);
