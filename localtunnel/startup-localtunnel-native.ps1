@@ -154,7 +154,7 @@ try {
     # Create admin user
     Write-Host "Setting up admin user..." -ForegroundColor Blue
     try {
-        & node create-admin.js | Out-Null
+        & node scripts/create-admin.js | Out-Null
         Write-Host "[OK] Admin user setup completed" -ForegroundColor Green
     } catch {
         Write-Host "[WARNING] Admin user setup may have issues, but continuing..." -ForegroundColor Yellow
