@@ -61,7 +61,7 @@ trap cleanup SIGINT SIGTERM
 
 # Create admin user if it doesn't exist
 echo "👤 Setting up admin user..."
-node create-admin.js
+node scripts/create-admin.js
 
 # Start the application
 echo "🚀 Starting the application..."
