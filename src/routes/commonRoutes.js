@@ -153,7 +153,7 @@ module.exports = (pool, requireAuth, requireRole) => {
         
         try {
             const [users] = await pool.execute(
-                'SELECT u.*, e.department_id FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE BINARY u.username = ? AND u.is_active = TRUE',
+                'SELECT u.*, e.department_id FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.username = ? AND u.is_active = TRUE LIMIT 1',
                 [username]
             );
             
@@ -166,6 +166,13 @@ module.exports = (pool, requireAuth, requireRole) => {
             }
             
             const user = users[0];
+
+            if (user.username !== username) {
+                console.log('❌ Username case mismatch');
+                req.flash('error', 'Invalid username or password');
+                return res.redirect('/login');
+            }
+
             console.log('🔐 Starting password verification for user:', user.user_id);
             const startTime = Date.now();
             const isValid = await bcrypt.compare(password, user.password);
