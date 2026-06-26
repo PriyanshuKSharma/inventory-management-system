@@ -153,7 +153,7 @@ module.exports = (pool, requireAuth, requireRole) => {
         
         try {
             const [users] = await pool.execute(
-                'SELECT u.*, e.department_id FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.username = ? AND u.is_active = TRUE LIMIT 1',
+                'SELECT * FROM users WHERE username = ? AND is_active = TRUE LIMIT 1',
                 [username]
             );
             
@@ -194,7 +194,7 @@ module.exports = (pool, requireAuth, requireRole) => {
                 email: user.email,
                 role: user.role,
                 is_super_admin: user.is_super_admin || false,
-                department_id: user.department_id
+                department_id: null
             };
             
             console.log('📝 Session user object created:', req.session.user);
