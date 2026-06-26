@@ -226,24 +226,43 @@ module.exports = (pool, requireAuth, requireRole) => {
         const { full_name, username, email, password, department_id } = req.body;
         
         try {
+            if (!full_name || !username || !email || !password || !department_id) {
+                req.flash('error', 'All fields are required');
+                return res.redirect('/register');
+            }
+
+            const departmentId = Number(department_id);
+            if (!Number.isInteger(departmentId) || departmentId <= 0) {
+                req.flash('error', 'Please select a valid department');
+                return res.redirect('/register');
+            }
+
             // Check if username or email already exists in users table
             const [existingUsers] = await pool.execute(
-                'SELECT * FROM users WHERE BINARY username = ? OR email = ?',
+                'SELECT username, email FROM users WHERE username = ? OR email = ? LIMIT 1',
                 [username, email]
             );
+
+            const userConflict = existingUsers.find(
+                (user) => user.username === username || user.email === email
+            );
             
-            if (existingUsers.length > 0) {
+            if (userConflict) {
                 req.flash('error', 'Username or email already exists');
                 return res.redirect('/register');
             }
             
             // Check if email already exists in registration_requests table
             const [existingRequests] = await pool.execute(
-                'SELECT * FROM registration_requests WHERE BINARY username = ? OR email = ?',
+                'SELECT username, email FROM registration_requests WHERE username = ? OR email = ? LIMIT 1',
                 [username, email]
             );
+
+            const requestConflict = existingRequests.find(
+                (request) => request.username === username || request.email === email
+            );
             
-            if (existingRequests.length > 0) {
+            if (requestConflict) {
                 req.flash('error', 'Registration request already exists for this username or email');
                 return res.redirect('/register');
             }
@@ -254,7 +273,7 @@ module.exports = (pool, requireAuth, requireRole) => {
             // Insert registration request
             await pool.execute(
                 'INSERT INTO registration_requests (full_name, username, email, password, department_id) VALUES (?, ?, ?, ?, ?)',
-                [full_name, username, email, hashedPassword, department_id]
+                [full_name, username, email, hashedPassword, departmentId]
             );
             
             // Send confirmation email to user
@@ -291,6 +310,17 @@ module.exports = (pool, requireAuth, requireRole) => {
             res.redirect('/login');
         } catch (error) {
             console.error('Registration error:', error);
+
+            if (error.code === 'ER_ACCESS_DENIED_ERROR') {
+                console.error('Registration DB auth failure: check Azure DB_USER/DB_PASSWORD');
+            } else if (error.code === 'ER_BAD_DB_ERROR') {
+                console.error('Registration DB not found: check Azure DB_NAME');
+            } else if (error.code === 'ER_NO_SUCH_TABLE') {
+                console.error('Registration schema missing: run scripts/setup-db.js');
+            } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+                console.error('Registration DB connection failure: check Azure DB_HOST, firewall, and port');
+            }
+
             req.flash('error', 'An error occurred during registration');
             res.redirect('/register');
         }
