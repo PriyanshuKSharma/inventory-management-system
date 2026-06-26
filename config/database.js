@@ -1,5 +1,13 @@
 const mysql = require('mysql2/promise');
 
+const requireDatabaseEnv = (value, name) => {
+    if (value === undefined || value === null || value === '') {
+        throw new Error(`Missing required database environment variable: ${name}`);
+    }
+
+    return value;
+};
+
 // Database configuration - different for production vs development
 const dbConfig = process.env.NODE_ENV === 'production' ? {
     // Production: Check if using socket path (Cloud SQL) or TCP (Windows)
@@ -19,15 +27,15 @@ const dbConfig = process.env.NODE_ENV === 'production' ? {
     ssl: { rejectUnauthorized: false }
 } : {
     // Development: Use standard TCP connection
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || process.env.DB_USERNAME || 'sigma',
-    password: process.env.DB_PASSWORD || 'sigma',
-    database: process.env.DB_NAME || process.env.DB_DATABASE || 'product_management_system',
-    port: process.env.DB_PORT || 3306,
+    host: requireDatabaseEnv(process.env.DB_HOST || process.env.DB_HOSTNAME, 'DB_HOST'),
+    user: requireDatabaseEnv(process.env.DB_USER || process.env.DB_USERNAME, 'DB_USER or DB_USERNAME'),
+    password: requireDatabaseEnv(process.env.DB_PASSWORD, 'DB_PASSWORD'),
+    database: requireDatabaseEnv(process.env.DB_NAME || process.env.DB_DATABASE, 'DB_NAME or DB_DATABASE'),
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
     connectionLimit: 5,
     waitForConnections: true,
     queueLimit: 0,
-    ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? { rejectUnauthorized: false } : undefined
+    ssl: (process.env.DB_HOST || process.env.DB_HOSTNAME) ? { rejectUnauthorized: false } : undefined
 };
 
 const pool = mysql.createPool(dbConfig);
