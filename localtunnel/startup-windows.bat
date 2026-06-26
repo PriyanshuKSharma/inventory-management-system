@@ -129,7 +129,7 @@ echo del cleanup.bat >> cleanup.bat
 
 :: Create admin user
 echo Setting up admin user...
-node create-admin.js
+node scripts\create-admin.js
 if %errorlevel% neq 0 (
     echo [WARNING] Admin user setup may have issues, but continuing...
 )
