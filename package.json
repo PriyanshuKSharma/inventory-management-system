@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "NODE_ENV=development node server.js",
+    "create-admin": "node scripts/create-admin.js",
     "global": "node -e \"console.log('🌐 Starting with global access...'); require('child_process').spawn('cmd', ['/c', 'scripts/quick-global.bat'], {stdio: 'inherit'});\"",
     "tunnel": "node -e \"console.log('🚀 Choose your tunnel...'); require('child_process').spawn('cmd', ['/c', 'scripts/global-access.bat'], {stdio: 'inherit'});\"",
     "setup-db": "node scripts/setup-db.js",
