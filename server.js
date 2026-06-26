@@ -141,7 +141,63 @@ process.on('unhandledRejection', (reason, promise) => {
 
 //For AZURE DEPLOYMENT
 // Database configuration - tailored for Azure App Service & Azure MySQL
-const dbConfig = {
+const parseMySqlConnectionString = (connectionString) => {
+    if (!connectionString) {
+        return null;
+    }
+
+    const value = connectionString.trim();
+
+    if (value.startsWith('mysql://') || value.startsWith('mysqls://')) {
+        const parsed = new URL(value);
+
+        return {
+            host: parsed.hostname,
+            port: parsed.port ? Number(parsed.port) : 3306,
+            user: decodeURIComponent(parsed.username),
+            password: decodeURIComponent(parsed.password),
+            database: parsed.pathname ? parsed.pathname.replace(/^\//, '') : undefined,
+            ssl: value.startsWith('mysqls://') ? { rejectUnauthorized: false } : undefined
+        };
+    }
+
+    const parts = value.split(';').reduce((accumulator, segment) => {
+        const [key, ...rest] = segment.split('=');
+
+        if (!key || rest.length === 0) {
+            return accumulator;
+        }
+
+        accumulator[key.trim().toLowerCase()] = rest.join('=').trim();
+        return accumulator;
+    }, {});
+
+    if (!parts.server && !parts.host) {
+        return null;
+    }
+
+    const server = parts.server || parts.host;
+    const [host, port] = server.split(':');
+
+    return {
+        host,
+        port: port ? Number(port) : 3306,
+        user: parts['user id'] || parts.uid || parts.user || parts.username,
+        password: parts.password || parts.pwd,
+        database: parts.database || parts['initial catalog'] || parts.db,
+        ssl: /required/i.test(parts.sslmode || '') ? { rejectUnauthorized: false } : undefined
+    };
+};
+
+const azureConnectionString =
+    process.env.DATABASE_URL ||
+    process.env.MYSQLCONNSTR_DEFAULT ||
+    Object.entries(process.env).find(([key]) => key.startsWith('MYSQLCONNSTR_'))?.[1] ||
+    null;
+
+const connectionFromAzure = parseMySqlConnectionString(azureConnectionString);
+
+const dbConfig = connectionFromAzure || {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || process.env.DB_USERNAME || 'sigma',
     password: process.env.DB_PASSWORD || 'sigma',
@@ -153,6 +209,12 @@ const dbConfig = {
     // Automatically use safe cloud SSL settings when hosted on Azure
     ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? { rejectUnauthorized: false } : undefined
 };
+
+if (connectionFromAzure) {
+    dbConfig.connectionLimit = 5;
+    dbConfig.waitForConnections = true;
+    dbConfig.queueLimit = 0;
+}
 
 console.log(`Database connection config -> Using host: ${dbConfig.host}`);
 
