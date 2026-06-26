@@ -28,4 +28,4 @@ RUN curl -o /usr/local/bin/wait-for-it.sh https://raw.githubusercontent.com/vish
 RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 # Start the server
-CMD ["/usr/local/bin/wait-for-it.sh", "mysql:3306", "--timeout=60", "--", "sh", "-c", "node create-admin.js && node server.js"]
+CMD ["/usr/local/bin/wait-for-it.sh", "mysql:3306", "--timeout=60", "--", "sh", "-c", "npm run create-admin && node server.js"]
