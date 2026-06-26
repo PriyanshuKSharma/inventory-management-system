@@ -349,52 +349,17 @@ app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     
     try {
-        // Test database connection with comprehensive logging
-        console.log('Attempting database connection...');
-        console.log('Environment:', process.env.NODE_ENV);
-        console.log('DB_HOST:', process.env.DB_HOST);
-        console.log('DB_USER:', process.env.DB_USER);
-        console.log('DB_NAME:', process.env.DB_NAME);
-        
-        const connection = await pool.getConnection();
-        console.log('Database connection successful!');
-        connection.release();
-        
-        // Create default admin users with hashed passwords
-        try {
-            const adminHash = await bcrypt.hash('admin123', 10);
-            const guddiHash = await bcrypt.hash('Welcome@MQI', 10);
-            const katragaddaHash = await bcrypt.hash('Welcome@MQI', 10);
-
-            // Check if admin user exists, if not create it
-            const [existingAdmin] = await pool.execute('SELECT user_id FROM users WHERE username = ?', ['admin']);
-            if (existingAdmin.length === 0) {
-                await pool.execute('INSERT INTO users (username, full_name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?, ?)', ['admin', 'System Administrator', 'admin@company.com', adminHash, 'admin', 1]);
-                console.log('Created admin user');
-            }
-
-            // Check if GuddiS user exists, if not create it
-            const [existingGuddi] = await pool.execute('SELECT user_id FROM users WHERE username = ?', ['GuddiS']);
-            if (existingGuddi.length === 0) {
-                await pool.execute('INSERT INTO users (username, full_name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?, ?)', ['GuddiS', 'Somling Guddi', 'Somling.Guddi@marquardt.com', guddiHash, 'admin', 1]);
-                console.log('Created GuddiS user');
-            }
-
-            // Check if KatragaddaV user exists, if not create it
-            const [existingKatragadda] = await pool.execute('SELECT user_id FROM users WHERE username = ?', ['KatragaddaV']);
-            if (existingKatragadda.length === 0) {
-                await pool.execute('INSERT INTO users (username, full_name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?, ?)', ['KatragaddaV', 'Venubabu Katragadda', 'Venubabu.Katragadda@marquardt.com', katragaddaHash, 'admin', 1]);
-                console.log('Created KatragaddaV user');
-            }
-        } catch (userCreationError) {
-            console.error('Error creating admin users:', userCreationError);
+        if (!username || !password) {
+            req.flash('error', 'Username and password are required');
+            return res.redirect('/login');
         }
 
-        
-        
         // Find user with exact username match (case sensitive)
         console.log('Looking for user:', username);
-        const [users] = await pool.execute('SELECT * FROM users WHERE username = ? AND is_active = 1 LIMIT 1', [username]);
+        const [users] = await pool.execute(
+            'SELECT u.*, e.department_id FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.username = ? AND u.is_active = 1 LIMIT 1',
+            [username]
+        );
         console.log('Found users:', users.length);
         
         if (users.length === 0) {
@@ -418,11 +383,6 @@ app.post('/login', async (req, res) => {
         const isValid = await bcrypt.compare(password, user.password);
         console.log('Password valid:', isValid);
         
-        // Additional test - create fresh hash and compare
-        const testHash = await bcrypt.hash(password, 10);
-        const testValid = await bcrypt.compare(password, testHash);
-        console.log('Test hash comparison:', testValid);
-        
         if (!isValid) {
             console.log('Invalid password for user:', username);
             req.flash('error', 'Invalid username or password');
@@ -434,37 +394,47 @@ app.post('/login', async (req, res) => {
             user_id: user.user_id,
             username: user.username,
             full_name: user.full_name,
-            role: user.role
+            role: user.role,
+            email: user.email,
+            is_super_admin: user.is_super_admin || false,
+            department_id: user.department_id
         };
         
         console.log('Session created:', req.session.user);
         console.log('Session ID:', req.sessionID);
-        
-        // Log login activity for audit trail (if available)
-        if (ActivityLogger && ActivityLogger.logLogin) {
-            try {
-                await ActivityLogger.logLogin(
-                    pool, 
-                    user.user_id, 
-                    user.full_name, 
-                    req.ip || req.connection.remoteAddress,
-                    req.get('User-Agent')
-                );
-            } catch (logError) {
-                console.error('Error logging login activity:', logError);
+
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                req.flash('error', 'Login failed. Please try again.');
+                return res.redirect('/login');
             }
-        }
+
+            // Log login activity for audit trail (if available)
+            if (ActivityLogger && ActivityLogger.logLogin) {
+                try {
+                    ActivityLogger.logLogin(user.user_id, {
+                        username: user.username,
+                        full_name: user.full_name,
+                        ip: req.ip || req.connection.remoteAddress,
+                        userAgent: req.get('User-Agent')
+                    });
+                } catch (logError) {
+                    console.error('Error logging login activity:', logError);
+                }
+            }
         
-        // Redirect user to role-appropriate dashboard
-        if (user.role === 'admin') {
-            res.redirect('/admin/dashboard');
-        } else if (user.role === 'monitor') {
-            res.redirect('/monitor/dashboard');
-        } else if (user.role === 'employee') {
-            res.redirect('/employee/dashboard');
-        } else {
-            res.redirect('/dashboard'); // Fallback for unknown roles
-        }
+            // Redirect user to role-appropriate dashboard
+            if (user.role === 'admin') {
+                return res.redirect('/admin/dashboard');
+            } else if (user.role === 'monitor') {
+                return res.redirect('/monitor/dashboard');
+            } else if (user.role === 'employee') {
+                return res.redirect('/employee/dashboard');
+            }
+
+            return res.redirect('/dashboard');
+        });
     } catch (error) {
         console.error('Login error:', error);
         req.flash('error', 'An error occurred during login');
