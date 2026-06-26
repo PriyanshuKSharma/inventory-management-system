@@ -394,7 +394,7 @@ app.post('/login', async (req, res) => {
         
         // Find user with exact username match (case sensitive)
         console.log('Looking for user:', username);
-        const [users] = await pool.execute('SELECT * FROM users WHERE BINARY username = ? AND is_active = 1', [username]);
+        const [users] = await pool.execute('SELECT * FROM users WHERE username = ? AND is_active = 1 LIMIT 1', [username]);
         console.log('Found users:', users.length);
         
         if (users.length === 0) {
@@ -404,6 +404,12 @@ app.post('/login', async (req, res) => {
         }
         
         const user = users[0];
+
+        if (user.username !== username) {
+            console.log('Username case mismatch for user:', username);
+            req.flash('error', 'Invalid username or password');
+            return res.redirect('/login');
+        }
         console.log('User found:', user.username, 'Role:', user.role);
         
         // Verify password using bcrypt comparison
@@ -460,8 +466,9 @@ app.post('/login', async (req, res) => {
             res.redirect('/dashboard'); // Fallback for unknown roles
         }
     } catch (error) {
-        console.error('Dashboard error:', error);
-        res.render('error', { message: 'Error loading dashboard', error: error.message || error.toString(), stack: error.stack });
+        console.error('Login error:', error);
+        req.flash('error', 'An error occurred during login');
+        return res.redirect('/login');
     }
 });
 
