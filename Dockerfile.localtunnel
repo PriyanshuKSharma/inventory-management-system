@@ -105,7 +105,7 @@ command=sh -c '
         sleep 2
     done
     echo "MySQL is up - running app startup scripts"
-    node create-admin.js && node server.js
+    npm run create-admin && node server.js
 '
 directory=/usr/src/app
 user=root
