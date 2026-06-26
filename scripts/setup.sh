@@ -223,9 +223,9 @@ initialize_application() {
     print_header "Initializing Application..."
     
     # Create admin account (if script exists)
-    if [ -f "create-admin.js" ]; then
+    if [ -f "scripts/create-admin.js" ]; then
         print_info "Creating admin account..."
-        if node create-admin.js; then
+        if node scripts/create-admin.js; then
             print_status "Admin account created successfully"
         else
             print_warning "Failed to create admin account - you may need to do this manually"
